@@ -288,14 +288,18 @@ classdef dbStatic
             [delta, beta] = cxro.dbStatic.getIndexOfRefraction(z, eV, f1, f2); % cm
                         
             figure
-            loglog(eV, delta);
             
-            xlabel('eV');
+            loglog(eV, delta, '-r');
+            hold on
+            loglog(eV, beta, '-b');
+            
+            xlabel('Photo energy (eV)');
             ylabel('delta beta');
             title(sprintf('%s, %s, %s \\delta and \\beta. n = 1 - \\delta - i\\beta', ...
                 info.name, ...
                 info.symbol, ...
                 info.z));
+            legend({'delta', 'beta'})
             
         end
         
@@ -329,7 +333,7 @@ classdef dbStatic
             
         end
         
-        % Returns absorption cross section in units of m^2
+        % Returns absorption cross section in units of cm^2
         % @param {double 1x1} eV - photon energy in eV
         % @param {double 1x1} f2 - atomic scattering factor
         % see: http://gisaxs.com/index.php/Absorption_length#Related_forms
@@ -371,25 +375,33 @@ classdef dbStatic
             
             r0 = 2.82e-15; % m
             lambda = cxro.dbStatic.getWav(eV); % m
-            Na = 6.02214076e23; % atoms/mol
-            density = cxro.dbStatic.getDensity(z); % g/cm3
-            ma = cxro.dbStatic.getMolarMass(z); % g/mol
             
-            % Avogadros / molar_mass gives atoms/g
-            % then multiply by density to get atoms/cm3
-  
-            
-            N = Na ./ ma * density; % atoms/cm3
-            cmPerM = 100; 
-            N = N * cmPerM^3; % atoms/m^3
+            N = cxro.dbStatic.getAtomsPerUnitVolume(z); % atoms/cm^3
+            N = N * 100^3; % atoms/m^3
             
             % In the form n = 1 - delta - i*beta
             
             delta = N.*r0*lambda.^2.*f1 / (2*pi);
-            beta = -N.*r0*lambda.^2.*f2 / (2*pi);
+            beta = N.*r0*lambda.^2.*f2 / (2*pi);
             
             % n = 1 - delta - 1i*beta;
         end
+        
+        % Returns the number of atoms per cubic centimeter (atoms/cm^3)
+        function val = getAtomsPerUnitVolume(z)
+            
+            
+            Na = 6.02214076e23; % atoms/mol
+            density = cxro.dbStatic.getDensity(z); % g/cm3
+            ma = cxro.dbStatic.getMolarMass(z); % g/mol
+            
+            % Avogadros / molar_mass ---> atoms/g
+            % then multiply by density to get atoms/cm3
+
+            val = Na ./ ma .* density; % atoms/cm3
+            
+        end
+        
         
         % Returns attenuation coefficient in units of (1/cm)
         % the characteristic inverse-distance for attenuation 
@@ -410,13 +422,16 @@ classdef dbStatic
             % 12 grams of Carbon 12 contains Na atoms 
             % 16 grams of Oxygen contains za atoms
             
+            xsec = cxro.dbStatic.getAbsorptionCrossSection(eV, f2); % cm^2
+            
             density = cxro.dbStatic.getDensity(z); % g/cm3
-            ma = cxro.dbStatic.getMolarMass(z);
-            xsec = cxro.dbStatic.getAbsorptionCrossSection(eV, f2);
+            ma = cxro.dbStatic.getMolarMass(z); % g/mol
             Na = 6.02214076e23;
             
+            N = cxro.dbStatic.getAtomsPerUnitVolume(z); % atoms/cm3
             
-            val = (density .* Na .* xsec) ./ ma;
+            val = N .* xsec; 
+            % val = (density .* Na .* xsec) ./ ma;
             
                        
         end
